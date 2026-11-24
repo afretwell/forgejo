@@ -1,0 +1,10 @@
+runner:
+  file: .runner
+  capacity: 1
+  labels:
+    - "docker:docker://node:20-bookworm"
+    - "ubuntu-latest:docker://node:20-bookworm"
+
+container:
+  # Job containers join the compose network so they can reach forgejo by hostname.
+  network: forgejo

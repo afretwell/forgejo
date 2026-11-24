@@ -1,0 +1,57 @@
+services:
+    forgejo:
+        image: code.forgejo.org/forgejo/forgejo:17.0.2
+        container_name: forgejo
+        restart: always
+        networks:
+            default:
+                aliases:
+                - '${FORGEJO_HOSTNAME}'
+        environment:
+            USER_UID: '1000'
+            USER_GID: '1000'
+            FORGEJO_ADMIN_USER: '${FORGEJO_ADMIN_USER}'
+            FORGEJO_ADMIN_PASSWORD: '${FORGEJO_ADMIN_PASSWORD}'
+            FORGEJO_ADMIN_EMAIL: '${FORGEJO_ADMIN_EMAIL}'
+            FORGEJO_RUNNER_SECRET: '${FORGEJO_RUNNER_SECRET}'
+            FORGEJO__security__INSTALL_LOCK: 'true'
+            FORGEJO__server__DOMAIN: '${FORGEJO_HOSTNAME}'
+            FORGEJO__server__ROOT_URL: 'http://${FORGEJO_HOSTNAME}:${FORGEJO_HTTP_PORT}/'
+            FORGEJO__server__HTTP_PORT: '${FORGEJO_HTTP_PORT}'
+            FORGEJO__server__SSH_PORT: '${FORGEJO_SSH_PORT}'
+            FORGEJO__time__DEFAULT_UI_LOCATION: '${TZ}'
+            FORGEJO__actions__ENABLED: 'true'
+        ports:
+        - '${FORGEJO_HTTP_PORT}:${FORGEJO_HTTP_PORT}'
+        - '${FORGEJO_SSH_PORT}:22'
+        volumes:
+        - forgejo_data:/data
+        - ./scripts/forgejo-entrypoint.sh:/forgejo-entrypoint.sh:ro
+        entrypoint: ["/bin/sh", "/forgejo-entrypoint.sh"]
+
+    forgejo-runner:
+        image: code.forgejo.org/forgejo/runner:13.2.2
+        container_name: forgejo-runner
+        restart: always
+        user: '0:0'
+        depends_on:
+        - forgejo
+        environment:
+            FORGEJO_URL: 'http://${FORGEJO_HOSTNAME}:${FORGEJO_HTTP_PORT}'
+            FORGEJO_RUNNER_SECRET: '${FORGEJO_RUNNER_SECRET}'
+            RUNNER_NAME: 'docker-runner'
+            DOCKER_HOST: 'unix:///var/run/docker.sock'
+        volumes:
+        - forgejo_runner:/data
+        - /var/run/docker.sock:/var/run/docker.sock
+        - ./scripts/runner-entrypoint.sh:/entrypoint.sh:ro
+        - ./config/runner.yaml:/config.yaml:ro
+        entrypoint: ["/bin/sh", "/entrypoint.sh"]
+
+networks:
+    default:
+        name: forgejo
+
+volumes:
+    forgejo_data:
+    forgejo_runner:
